@@ -14,7 +14,6 @@
     <div
       id="canvas"
       class="canvas"
-      ref="canvasRef"
       @dragenter.prevent
       @dragover.prevent
       @drop="onDrop"
@@ -43,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { onMounted, onUnmounted, ref } from "vue";
 const CANVAS_KEY = "canvas-elements";
 type CanvasElement = {
   type: HTMLElement["tagName"];
@@ -52,21 +51,22 @@ type CanvasElement = {
   editable: true;
 };
 
-const canvasRef = ref<HTMLElement | null>();
 const canvasElements = ref<CanvasElement[]>([]);
 const focusedElementIndex = ref<number | null>();
+const focusedElementRef = ref<HTMLElement | null>();
 
 function onColorInputChange(e: Event & { target: HTMLInputElement }) {
   if (typeof focusedElementIndex.value === "number") {
     canvasElements.value[focusedElementIndex.value].styles = {
       color: e.target.value,
     };
+    saveCanvas();
   }
 }
 
 function clearCanvas() {
-  canvasRef.value.innerHTML = null;
   localStorage.removeItem(CANVAS_KEY);
+  canvasElements.value = [];
 }
 
 function onDragStart(e: DragEvent) {
@@ -83,20 +83,14 @@ function onFocus({
   element: CanvasElement;
   event: Event;
 }) {
-  element.styles = { border: "solid 1px white" };
   focusedElementIndex.value = index;
-}
-// TODO, blur when click in anywhere but the menu
-function onBlur({
-  index,
-  element,
-  event,
-}: {
-  index: number;
-  element: CanvasElement;
-  event: Event;
-}) {
-  element.styles = { border: "" };
+  canvasElements.value = canvasElements.value.map((ele, i) => {
+    return {
+      ...ele,
+      styles: { ...ele.styles, border: index === i ? "solid 1px white" : "" },
+    };
+  });
+  focusedElementRef.value = event.target as HTMLElement;
 }
 
 function onDrop(e: DragEvent) {
@@ -109,8 +103,13 @@ function onDrop(e: DragEvent) {
       styles: {},
       editable: true,
     });
-    localStorage.setItem(CANVAS_KEY, JSON.stringify(canvasElements.value));
+    saveCanvas();
   }
+}
+
+function saveCanvas() {
+  //TODO: use DB instead
+  localStorage.setItem(CANVAS_KEY, JSON.stringify(canvasElements.value));
 }
 
 function onKeyDown(e: KeyboardEvent) {
@@ -121,10 +120,43 @@ function onKeyDown(e: KeyboardEvent) {
 }
 
 onMounted(() => {
+  //TODO: use DB instead
   const canvasElementsFromStore = localStorage.getItem(CANVAS_KEY);
   if (canvasElementsFromStore) {
     canvasElements.value = JSON.parse(canvasElementsFromStore);
   }
+});
+onMounted(() => {
+  const clickListener = (e: MouseEvent) => {
+    const menu = document.querySelector("menu");
+    const nav = document.querySelector("nav");
+    const clickedInsideMenu =
+      menu?.contains(e.target as Node) || nav?.contains(e.target as Node);
+    const clickedInsideFocused = focusedElementRef.value?.contains(
+      e.target as Node
+    );
+
+    if (!clickedInsideMenu && !clickedInsideFocused) {
+      // Blur and remove border
+      focusedElementRef.value?.blur();
+
+      if (typeof focusedElementIndex.value === "number") {
+        canvasElements.value[focusedElementIndex.value].styles = {
+          ...canvasElements.value[focusedElementIndex.value].styles,
+          border: "",
+        };
+      }
+
+      focusedElementIndex.value = null;
+      focusedElementRef.value = null;
+    }
+  };
+
+  document.addEventListener("click", clickListener);
+
+  onUnmounted(() => {
+    document.removeEventListener("click", clickListener);
+  });
 });
 </script>
 
