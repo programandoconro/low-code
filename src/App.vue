@@ -26,6 +26,8 @@
         :key="i"
         :is="el.type"
         contenteditable="true"
+        @focus="(e: Event) => onFocus({ index: i, element: el, event: e })"
+        :style="el.styles"
       >
         {{ el.content }}
       </component>
@@ -43,13 +45,23 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 const CANVAS_KEY = "canvas-elements";
+type CanvasElement = {
+  type: HTMLElement["tagName"];
+  content: string;
+  styles: Partial<CSSStyleDeclaration>;
+  editable: true;
+};
 
 const canvasRef = ref<HTMLElement | null>();
-const focusedElement = ref<HTMLElement | null>();
-const canvasElements = ref([]);
+const canvasElements = ref<CanvasElement[]>([]);
+const focusedElementIndex = ref<number | null>();
 
-function onColorInputChange(e: Event) {
-  focusedElement.value.style.color = (e.target as HTMLInputElement).value;
+function onColorInputChange(e: Event & { target: HTMLInputElement }) {
+  if (typeof focusedElementIndex.value === "number") {
+    canvasElements.value[focusedElementIndex.value].styles = {
+      color: e.target.value,
+    };
+  }
 }
 
 function clearCanvas() {
@@ -60,6 +72,31 @@ function clearCanvas() {
 function onDragStart(e: DragEvent) {
   e.dataTransfer.effectAllowed = "all";
   e.dataTransfer.setData("text/plain", "h1");
+}
+
+function onFocus({
+  index,
+  element,
+  event,
+}: {
+  index: number;
+  element: CanvasElement;
+  event: Event;
+}) {
+  element.styles = { border: "solid 1px white" };
+  focusedElementIndex.value = index;
+}
+// TODO, blur when click in anywhere but the menu
+function onBlur({
+  index,
+  element,
+  event,
+}: {
+  index: number;
+  element: CanvasElement;
+  event: Event;
+}) {
+  element.styles = { border: "" };
 }
 
 function onDrop(e: DragEvent) {
