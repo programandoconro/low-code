@@ -1,16 +1,6 @@
 <template>
   <main>
-    <nav>
-      <div
-        class="h1"
-        id="h1"
-        ref="h1Ele"
-        draggable="true"
-        @dragstart="onDragStart"
-      >
-        h1
-      </div>
-    </nav>
+    <ElementNav />
     <div
       id="canvas"
       class="canvas"
@@ -18,31 +8,33 @@
       @dragover.prevent
       @drop="onDrop"
       @drop.prevent
-      @keydown="onKeyDown"
     >
       <component
         v-for="(el, i) in canvasElements"
         :key="i"
         :is="el.type"
         contenteditable="true"
-        @focus="(e: Event) => onFocus({ index: i, element: el, event: e })"
+        @focus="(e: Event) => onFocus({ index: i, event: e })"
         :style="el.styles"
+        @keydown="(e: KeyboardEvent) => onKeyDown({index: i, event:e})"
       >
         {{ el.content }}
       </component>
     </div>
 
     <button class="clear-button" @click="clearCanvas">x</button>
-    <menu>
-      <h3>Menu</h3>
-      <label>Color</label>
-      <input @change="onColorInputChange" id="color-input" />
-    </menu>
+    <ElementMenu
+      v-model:color="color"
+      @color-input-change="onColorInputChange"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
+import ElementMenu from "./components/ElementMenu.vue";
+import ElementNav from "./components/ElementNav.vue";
+
 const CANVAS_KEY = "canvas-elements";
 type CanvasElement = {
   type: HTMLElement["tagName"];
@@ -54,6 +46,7 @@ type CanvasElement = {
 const canvasElements = ref<CanvasElement[]>([]);
 const focusedElementIndex = ref<number | null>();
 const focusedElementRef = ref<HTMLElement | null>();
+const color = ref<string>("");
 
 function onColorInputChange(e: Event & { target: HTMLInputElement }) {
   if (typeof focusedElementIndex.value === "number") {
@@ -69,20 +62,8 @@ function clearCanvas() {
   canvasElements.value = [];
 }
 
-function onDragStart(e: DragEvent) {
-  e.dataTransfer.effectAllowed = "all";
-  e.dataTransfer.setData("text/plain", "h1");
-}
-
-function onFocus({
-  index,
-  element,
-  event,
-}: {
-  index: number;
-  element: CanvasElement;
-  event: Event;
-}) {
+function onFocus({ index, event }: { index: number; event: Event }) {
+  color.value = "";
   focusedElementIndex.value = index;
   canvasElements.value = canvasElements.value.map((ele, i) => {
     return {
@@ -109,13 +90,20 @@ function onDrop(e: DragEvent) {
 
 function saveCanvas() {
   //TODO: use DB instead
+  canvasElements.value.map((val) => ({
+    ...val,
+    styles: { ...val.styles, border: "" },
+  }));
   localStorage.setItem(CANVAS_KEY, JSON.stringify(canvasElements.value));
 }
 
-function onKeyDown(e: KeyboardEvent) {
-  if (e.key === "Enter") {
-    e.preventDefault(); // prevent newline
-    (e.target as HTMLElement).blur();
+function onKeyDown({ event, index }: { event: KeyboardEvent; index: number }) {
+  if (event.key === "Enter") {
+    const target = event.target as HTMLElement;
+    canvasElements.value[index].content = target.innerText;
+    saveCanvas();
+    event.preventDefault(); // prevent newline
+    (event.target as HTMLElement).blur();
   }
 }
 
@@ -167,19 +155,6 @@ main {
   width: 100%;
 }
 
-nav {
-  background-color: gray;
-  width: 20%;
-}
-
-.h1 {
-  border: 1px solid whitesmoke;
-  text-align: center;
-  padding: 10px;
-  margin: 10px;
-  cursor: grab;
-}
-
 .canvas {
   width: 60%;
   background-color: black;
@@ -200,9 +175,5 @@ nav {
     opacity: 70%;
     transition: ease 0.4s;
   }
-}
-menu {
-  background-color: gray;
-  width: 20%;
 }
 </style>
