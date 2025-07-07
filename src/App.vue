@@ -2,15 +2,17 @@
   <main>
     <ElementNav />
     <Canvas
-      :canvas-elements="canvasElements"
+      v-model:canvas-elements="canvasElements"
+      v-model:focused-element-index="focusedElementIndex"
+      v-model:focused-element-ref="focusedElementRef"
+      v-model:color="color"
       :save-canvas="saveCanvas"
-      v-on:focus="onFocus"
     />
     <ClearCanvasButton v-model:canvas-elements="canvasElements" />
     <ElementMenu
-      :color="color"
-      :canvas-elements="canvasElements"
-      :focused-element-index="focusedElementIndex"
+      v-model:color="color"
+      v-model:canvas-elements="canvasElements"
+      v-bind:focused-element-index="focusedElementIndex"
     />
   </main>
 </template>
@@ -24,37 +26,13 @@ import Canvas from "./components/Canvas.vue";
 import ClearCanvasButton from "./components/ClearCanvasButton.vue";
 
 import { CanvasElement } from "./utils/model";
-import { getCanvasElementsFromStore, saveCanvas } from "./utils/storage";
+import { saveCanvas } from "./utils/storage";
 
 const canvasElements = ref<CanvasElement[]>([]);
-const focusedElementIndex = ref<number | null>();
-const focusedElementRef = ref<HTMLElement | null>();
+const focusedElementIndex = ref<number | null>(null);
+const focusedElementRef = ref<HTMLElement | null>(null);
 const color = ref<string>("");
 
-function onFocus({ index, event }: { index: number; event: Event }) {
-  color.value = "";
-  focusedElementIndex.value = index;
-  canvasElements.value = canvasElements.value.map((ele, i) => {
-    return {
-      ...ele,
-      styles: { ...ele.styles, border: index === i ? "solid 1px white" : "" },
-    };
-  });
-  focusedElementRef.value = event.target as HTMLElement;
-}
-
-onMounted(() => {
-  //TODO: use DB instead
-  const canvasElementsFromStore = getCanvasElementsFromStore();
-  if (canvasElementsFromStore) {
-    canvasElements.value = JSON.parse(canvasElementsFromStore).map(
-      (val: CanvasElement) => ({
-        ...val,
-        styles: { ...val.styles, border: "" },
-      })
-    );
-  }
-});
 onMounted(() => {
   const clickListener = (e: MouseEvent) => {
     const menu = document.querySelector("menu");
@@ -66,7 +44,6 @@ onMounted(() => {
     );
 
     if (!clickedInsideMenu && !clickedInsideFocused) {
-      // Blur and remove border
       focusedElementRef.value?.blur();
 
       if (typeof focusedElementIndex.value === "number") {
