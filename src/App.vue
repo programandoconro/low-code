@@ -7,32 +7,29 @@
       v-on:focus="onFocus"
     />
     <ClearCanvasButton v-model:canvas-elements="canvasElements" />
-    <ElementMenu :color="color" @color-input-change="onColorInputChange" />
+    <ElementMenu
+      :color="color"
+      :canvas-elements="canvasElements"
+      :focused-element-index="focusedElementIndex"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
+
 import ElementMenu from "./components/PropertyMenu.vue";
 import ElementNav from "./components/ElementMenu.vue";
-import { CanvasElement } from "./utils/model";
 import Canvas from "./components/Canvas.vue";
-import { getCanvasElementsFromStore, saveCanvas } from "./utils/storage";
 import ClearCanvasButton from "./components/ClearCanvasButton.vue";
+
+import { CanvasElement } from "./utils/model";
+import { getCanvasElementsFromStore, saveCanvas } from "./utils/storage";
 
 const canvasElements = ref<CanvasElement[]>([]);
 const focusedElementIndex = ref<number | null>();
 const focusedElementRef = ref<HTMLElement | null>();
 const color = ref<string>("");
-
-function onColorInputChange(e: Event & { target: HTMLInputElement }) {
-  if (typeof focusedElementIndex.value === "number") {
-    canvasElements.value[focusedElementIndex.value].styles = {
-      color: e.target.value,
-    };
-    saveCanvas(canvasElements.value);
-  }
-}
 
 function onFocus({ index, event }: { index: number; event: Event }) {
   color.value = "";
