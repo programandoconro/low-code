@@ -5,10 +5,8 @@
       :canvas-elements="canvasElements"
       :save-canvas="saveCanvas"
       v-on:focus="onFocus"
-      v-on:key-down="onKeyDown"
     />
-
-    <button class="clear-button" @click="clearCanvasElements">x</button>
+    <ClearCanvasButton v-model:canvas-elements="canvasElements" />
     <ElementMenu :color="color" @color-input-change="onColorInputChange" />
   </main>
 </template>
@@ -19,11 +17,8 @@ import ElementMenu from "./components/PropertyMenu.vue";
 import ElementNav from "./components/ElementMenu.vue";
 import { CanvasElement } from "./utils/model";
 import Canvas from "./components/Canvas.vue";
-import {
-  clearCanvasFromStorage,
-  getCanvasElementsFromStore,
-  saveCanvas,
-} from "./utils/storage";
+import { getCanvasElementsFromStore, saveCanvas } from "./utils/storage";
+import ClearCanvasButton from "./components/ClearCanvasButton.vue";
 
 const canvasElements = ref<CanvasElement[]>([]);
 const focusedElementIndex = ref<number | null>();
@@ -39,11 +34,6 @@ function onColorInputChange(e: Event & { target: HTMLInputElement }) {
   }
 }
 
-function clearCanvasElements() {
-  clearCanvasFromStorage();
-  canvasElements.value = [];
-}
-
 function onFocus({ index, event }: { index: number; event: Event }) {
   color.value = "";
   focusedElementIndex.value = index;
@@ -54,16 +44,6 @@ function onFocus({ index, event }: { index: number; event: Event }) {
     };
   });
   focusedElementRef.value = event.target as HTMLElement;
-}
-
-function onKeyDown({ event, index }: { event: KeyboardEvent; index: number }) {
-  if (event.key === "Enter") {
-    const target = event.target as HTMLElement;
-    canvasElements.value[index].content = target.innerText;
-    saveCanvas(canvasElements.value);
-    event.preventDefault(); // prevent newline
-    (event.target as HTMLElement).blur();
-  }
 }
 
 onMounted(() => {
@@ -117,20 +97,5 @@ main {
   display: flex;
   height: 100vh;
   width: 100%;
-}
-
-.clear-button {
-  background-color: red;
-  height: 30px;
-  width: 30px;
-  margin: 10px;
-  border: solid 1px white;
-  border-radius: 5px;
-  color: white;
-  cursor: pointer;
-  &:hover {
-    opacity: 70%;
-    transition: ease 0.4s;
-  }
 }
 </style>

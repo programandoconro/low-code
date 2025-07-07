@@ -27,7 +27,6 @@ const props = defineProps<{
   canvasElements: CanvasElement[];
   saveCanvas: (canvasElements: CanvasElement[]) => void;
   onFocus: ({ index, event }: { index: number; event: Event }) => void;
-  onKeyDown: ({ index, event }: { index: number; event: Event }) => void;
 }>();
 function onDrop(e: DragEvent) {
   const draggedType = e.dataTransfer.getData("text/plain");
@@ -40,6 +39,15 @@ function onDrop(e: DragEvent) {
       editable: true,
     });
     props.saveCanvas(props.canvasElements);
+  }
+}
+function onKeyDown({ event, index }: { event: KeyboardEvent; index: number }) {
+  if (event.key === "Enter") {
+    const target = event.target as HTMLElement;
+    props.canvasElements[index].content = target.innerText;
+    props.saveCanvas(props.canvasElements);
+    event.preventDefault(); // prevent newline
+    (event.target as HTMLElement).blur();
   }
 }
 </script>
