@@ -1,30 +1,33 @@
 <template>
-  <menu>
-    <h3>Menu</h3>
-    <label>Color</label>
-    <input
-      :value="props.color"
-      @change="props.onColorInputChange"
-      id="color-input"
-      @input="emit('update:color', ($event.target as HTMLInputElement).value)"
-    />
-  </menu>
+  <nav>
+    <div
+      class="h1"
+      id="h1"
+      ref="h1Ele"
+      draggable="true"
+      @dragstart="onDragStart"
+    >
+      h1
+    </div>
+  </nav>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{
-  color: string;
-  onColorInputChange: (e: Event & { target: HTMLInputElement }) => void;
-}>();
-
-const emit = defineEmits<{
-  (e: "update:color", value: string): void;
-}>();
+function onDragStart(e: DragEvent) {
+  e.dataTransfer.effectAllowed = "all";
+  e.dataTransfer.setData("text/plain", "h1");
+}
 </script>
-
-<style>
-menu {
+<style scoped>
+nav {
   background-color: gray;
   width: 20%;
+}
+.h1 {
+  border: 1px solid whitesmoke;
+  text-align: center;
+  padding: 10px;
+  margin: 10px;
+  cursor: grab;
 }
 </style>

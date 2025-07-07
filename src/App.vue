@@ -1,47 +1,29 @@
 <template>
   <main>
     <ElementNav />
-    <div
-      id="canvas"
-      class="canvas"
-      @dragenter.prevent
-      @dragover.prevent
-      @drop="onDrop"
-      @drop.prevent
-    >
-      <component
-        v-for="(el, i) in canvasElements"
-        :key="i"
-        :is="el.type"
-        contenteditable="true"
-        @focus="(e: Event) => onFocus({ index: i, event: e })"
-        :style="el.styles"
-        @keydown="(e: KeyboardEvent) => onKeyDown({index: i, event:e})"
-      >
-        {{ el.content }}
-      </component>
-    </div>
-
-    <button class="clear-button" @click="clearCanvas">x</button>
-    <ElementMenu
-      v-model:color="color"
-      @color-input-change="onColorInputChange"
+    <Canvas
+      :canvas-elements="canvasElements"
+      :save-canvas="saveCanvas"
+      v-on:focus="onFocus"
+      v-on:key-down="onKeyDown"
     />
+
+    <button class="clear-button" @click="clearCanvasElements">x</button>
+    <ElementMenu :color="color" @color-input-change="onColorInputChange" />
   </main>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
-import ElementMenu from "./components/ElementMenu.vue";
-import ElementNav from "./components/ElementNav.vue";
-
-const CANVAS_KEY = "canvas-elements";
-type CanvasElement = {
-  type: HTMLElement["tagName"];
-  content: string;
-  styles: Partial<CSSStyleDeclaration>;
-  editable: true;
-};
+import ElementMenu from "./components/PropertyMenu.vue";
+import ElementNav from "./components/ElementMenu.vue";
+import { CanvasElement } from "./utils/model";
+import Canvas from "./components/Canvas.vue";
+import {
+  clearCanvasFromStorage,
+  getCanvasElementsFromStore,
+  saveCanvas,
+} from "./utils/storage";
 
 const canvasElements = ref<CanvasElement[]>([]);
 const focusedElementIndex = ref<number | null>();
@@ -53,12 +35,12 @@ function onColorInputChange(e: Event & { target: HTMLInputElement }) {
     canvasElements.value[focusedElementIndex.value].styles = {
       color: e.target.value,
     };
-    saveCanvas();
+    saveCanvas(canvasElements.value);
   }
 }
 
-function clearCanvas() {
-  localStorage.removeItem(CANVAS_KEY);
+function clearCanvasElements() {
+  clearCanvasFromStorage();
   canvasElements.value = [];
 }
 
@@ -74,34 +56,11 @@ function onFocus({ index, event }: { index: number; event: Event }) {
   focusedElementRef.value = event.target as HTMLElement;
 }
 
-function onDrop(e: DragEvent) {
-  const draggedType = e.dataTransfer.getData("text/plain");
-
-  if (draggedType === "h1") {
-    canvasElements.value.push({
-      type: "h1",
-      content: "Title",
-      styles: {},
-      editable: true,
-    });
-    saveCanvas();
-  }
-}
-
-function saveCanvas() {
-  //TODO: use DB instead
-  canvasElements.value.map((val) => ({
-    ...val,
-    styles: { ...val.styles, border: "" },
-  }));
-  localStorage.setItem(CANVAS_KEY, JSON.stringify(canvasElements.value));
-}
-
 function onKeyDown({ event, index }: { event: KeyboardEvent; index: number }) {
   if (event.key === "Enter") {
     const target = event.target as HTMLElement;
     canvasElements.value[index].content = target.innerText;
-    saveCanvas();
+    saveCanvas(canvasElements.value);
     event.preventDefault(); // prevent newline
     (event.target as HTMLElement).blur();
   }
@@ -109,9 +68,14 @@ function onKeyDown({ event, index }: { event: KeyboardEvent; index: number }) {
 
 onMounted(() => {
   //TODO: use DB instead
-  const canvasElementsFromStore = localStorage.getItem(CANVAS_KEY);
+  const canvasElementsFromStore = getCanvasElementsFromStore();
   if (canvasElementsFromStore) {
-    canvasElements.value = JSON.parse(canvasElementsFromStore);
+    canvasElements.value = JSON.parse(canvasElementsFromStore).map(
+      (val: CanvasElement) => ({
+        ...val,
+        styles: { ...val.styles, border: "" },
+      })
+    );
   }
 });
 onMounted(() => {
@@ -155,13 +119,6 @@ main {
   width: 100%;
 }
 
-.canvas {
-  width: 60%;
-  background-color: black;
-  border: 2px dashed white;
-  margin: 10px 0px 10px 10px;
-  padding: 10px;
-}
 .clear-button {
   background-color: red;
   height: 30px;
